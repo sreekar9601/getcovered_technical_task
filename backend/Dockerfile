@@ -47,12 +47,13 @@ RUN playwright install-deps firefox || echo "Note: Some optional dependencies ma
 # Copy application code
 COPY . .
 
-# Expose port
+# Expose port (Railway will set PORT env var)
 EXPOSE 8000
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application (use PORT env var, fallback to 8000)
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
