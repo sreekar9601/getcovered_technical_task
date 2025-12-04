@@ -378,6 +378,46 @@ This is a technical assessment project, but feedback and suggestions are welcome
 
 ---
 
+---
+
+## 🐳 Docker & Deployment
+
+### Quick Deploy with Docker
+
+1. **Set up environment**:
+```bash
+# Copy and edit environment file
+cp backend/.env.example backend/.env
+# Add your GEMINI_API_KEY to backend/.env
+```
+
+2. **Build and run**:
+```bash
+docker-compose up --build
+```
+
+3. **Access**:
+- Frontend: http://localhost
+- Backend: http://localhost:8000
+
+### Cloud Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment guides:
+- 🚂 **Railway** - Easiest full-stack deployment (recommended)
+- 🎨 **Render** - Free tier with auto-deploy from GitHub
+- ▲ **Vercel + Railway** - Best for frontend performance
+- ☁️ **Google Cloud Run** - Production-grade scalability
+
+**Quick Railway Deploy:**
+```bash
+npm i -g @railway/cli
+railway login
+cd backend && railway init && railway up
+cd ../frontend && railway init && railway up
+```
+
+---
+
 ## 📄 License
 
 MIT

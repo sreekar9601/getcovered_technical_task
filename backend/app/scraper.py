@@ -312,7 +312,7 @@ async def scrape_website(url: str) -> ScrapeResult:
             logger.warning("Playwright failed, using static HTML as last resort (LLM will try to detect)")
             return ScrapeResult(
                 html=static_html,
-                method="static_after_playwright_failure",
+                method="static",  # Fallback to static when Playwright fails
                 redirected=False
             )
         raise ScrapingError(f"Failed to scrape website: both static and dynamic methods failed")
