@@ -7,6 +7,7 @@ from typing import List, Optional, Literal
 class ScrapeRequest(BaseModel):
     """Request model for scraping endpoint"""
     url: str = Field(..., description="Website URL to scrape")
+    force_playwright: bool = Field(default=False, description="Force browser automation (slower but more reliable)")
     
     @field_validator('url')
     @classmethod

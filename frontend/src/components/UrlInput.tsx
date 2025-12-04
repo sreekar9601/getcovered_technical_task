@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Zap } from 'lucide-react';
 
 interface UrlInputProps {
-  onSubmit: (url: string) => void;
+  onSubmit: (url: string, forcePlaywright?: boolean) => void;
   isLoading: boolean;
 }
 
 export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit, isLoading }) => {
   const [url, setUrl] = useState('');
+  const [forcePlaywright, setForcePlaywright] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (url.trim()) {
-      onSubmit(url.trim());
+      onSubmit(url.trim(), forcePlaywright);
     }
   };
 
@@ -50,6 +51,24 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit, isLoading }) => {
           <Search size={18} />
           Analyze
         </button>
+      </div>
+      
+      {/* Force Playwright Toggle */}
+      <div className="mt-3 flex items-center gap-2">
+        <label className="flex items-center gap-2 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={forcePlaywright}
+            onChange={(e) => setForcePlaywright(e.target.checked)}
+            disabled={isLoading}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
+          />
+          <span className="text-sm text-gray-700 group-hover:text-gray-900 flex items-center gap-1">
+            <Zap size={14} className="text-orange-500" />
+            <strong>Force Browser Automation</strong>
+            <span className="text-gray-500">(slower, more reliable for JS-heavy sites)</span>
+          </span>
+        </label>
       </div>
       
       <div className="mt-6">

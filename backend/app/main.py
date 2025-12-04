@@ -114,9 +114,9 @@ async def scrape_endpoint(request: ScrapeRequest):
         start_time = time.time()
         
         # 3. Scrape with timeout (increased to allow Playwright + fallback)
-        logger.info(f"Starting scrape for: {url}")
+        logger.info(f"Starting scrape for: {url} (force_playwright={request.force_playwright})")
         result = await asyncio.wait_for(
-            scrape_website(url),
+            scrape_website(url, force_playwright=request.force_playwright),
             timeout=60.0  # 60 second timeout to allow Playwright (30s) + fallback
         )
         

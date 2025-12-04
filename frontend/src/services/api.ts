@@ -5,13 +5,14 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface ScrapeRequest {
   url: string;
+  force_playwright?: boolean;
 }
 
-export const scrapeWebsite = async (url: string): Promise<ScrapeResults> => {
+export const scrapeWebsite = async (url: string, forcePlaywright: boolean = false): Promise<ScrapeResults> => {
   try {
     const response = await axios.post<ScrapeResults>(
       `${API_BASE_URL}/api/scrape`,
-      { url },
+      { url, force_playwright: forcePlaywright },
       {
         timeout: 60000, // 60 second timeout
         headers: {

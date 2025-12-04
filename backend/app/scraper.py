@@ -206,17 +206,18 @@ def _should_try_playwright(html: str, url: str) -> bool:
     return result
 
 
-async def scrape_website(url: str) -> ScrapeResult:
+async def scrape_website(url: str, force_playwright: bool = False) -> ScrapeResult:
     """
     Main scraping function with intelligent dual-path strategy
     
     Strategy:
-    1. Try fast static scraping first
+    1. Try fast static scraping first (unless force_playwright=True)
     2. Analyze if content looks like it needs JavaScript
     3. Use Playwright if needed
     
     Args:
         url: Website URL to scrape
+        force_playwright: If True, skip static and go straight to Playwright
         
     Returns:
         ScrapeResult object with HTML and metadata
@@ -227,60 +228,66 @@ async def scrape_website(url: str) -> ScrapeResult:
     static_error = None
     static_html = None
     
-    # Path 1: Try fast static scraping first
-    try:
-        logger.info(f"Attempting static scrape for {url}")
-        static_html = scrape_static(url)
-        
-        # Check if content is sufficient
-        if len(static_html) > 500:
-            logger.info(f"Static scrape successful for {url} (length: {len(static_html)})")
+    # If user forced Playwright, skip static entirely
+    if force_playwright:
+        logger.info("Force Playwright mode: skipping static scrape")
+        static_error = "user_forced_playwright"
+    
+    # Path 1: Try fast static scraping first (unless forced to skip)
+    if not force_playwright:
+        try:
+            logger.info(f"Attempting static scrape for {url}")
+            static_html = scrape_static(url)
             
-            # Quick check: Does it have password input already?
-            if 'type="password"' in static_html or "type='password'" in static_html:
-                logger.info("Password input found in static HTML, using static result")
-                return ScrapeResult(
-                    html=static_html,
-                    method="static",
-                    redirected=False
-                )
-            
-            # Check if we should try Playwright (now using Firefox)
-            if _should_try_playwright(static_html, url):
-                logger.info("Static HTML suggests JavaScript rendering, trying Playwright with Firefox")
-                static_error = "javascript_detected"
+            # Check if content is sufficient
+            if len(static_html) > 500:
+                logger.info(f"Static scrape successful for {url} (length: {len(static_html)})")
+                
+                # Quick check: Does it have password input already?
+                if 'type="password"' in static_html or "type='password'" in static_html:
+                    logger.info("Password input found in static HTML, using static result")
+                    return ScrapeResult(
+                        html=static_html,
+                        method="static",
+                        redirected=False
+                    )
+                
+                # Check if we should try Playwright (now using Firefox)
+                if _should_try_playwright(static_html, url):
+                    logger.info("Static HTML suggests JavaScript rendering, trying Playwright with Firefox")
+                    static_error = "javascript_detected"
+                else:
+                    # Use static result if no JavaScript indicators
+                    logger.info("Static HTML looks complete, using without Playwright")
+                    return ScrapeResult(
+                        html=static_html,
+                        method="static",
+                        redirected=False
+                    )
             else:
-                # Use static result if no JavaScript indicators
-                logger.info("Static HTML looks complete, using without Playwright")
-                return ScrapeResult(
-                    html=static_html,
-                    method="static",
-                    redirected=False
-                )
-        else:
-            logger.warning(f"Static scrape returned minimal content ({len(static_html)} chars)")
-            static_error = "insufficient_content"
-    
-    except requests.exceptions.HTTPError as e:
-        status_code = e.response.status_code if e.response is not None else None
-        if status_code in [403, 429, 503]:
-            logger.warning(f"Static scrape blocked ({status_code}), trying Playwright")
-            static_error = f"HTTP {status_code}"
-        else:
-            # Don't retry on 404, etc.
-            raise ScrapingError(f"HTTP error {status_code}")
-    
-    except requests.exceptions.Timeout:
-        logger.warning(f"Static scrape timed out, trying Playwright")
-        static_error = "timeout"
-    
-    except requests.exceptions.ConnectionError:
-        logger.warning(f"Static scrape connection error, trying Playwright")
-        static_error = "connection_error"
-    
-    except Exception as e:
-        logger.warning(f"Static scrape failed ({type(e).__name__}), trying Playwright")
-        static_error = str(e)
+                logger.warning(f"Static scrape returned minimal content ({len(static_html)} chars)")
+                static_error = "insufficient_content"
+        
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+            if status_code in [403, 429, 503]:
+                logger.warning(f"Static scrape blocked ({status_code}), trying Playwright")
+                static_error = f"HTTP {status_code}"
+            else:
+                # Don't retry on 404, etc.
+                raise ScrapingError(f"HTTP error {status_code}")
+        
+        except requests.exceptions.Timeout:
+            logger.warning(f"Static scrape timed out, trying Playwright")
+            static_error = "timeout"
+        
+        except requests.exceptions.ConnectionError:
+            logger.warning(f"Static scrape connection error, trying Playwright")
+            static_error = "connection_error"
+        
+        except Exception as e:
+            logger.warning(f"Static scrape failed ({type(e).__name__}), trying Playwright")
+            static_error = str(e)
     
     # Path 2: Fallback to browser automation
     try:

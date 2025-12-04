@@ -12,13 +12,13 @@ function App() {
   const [results, setResults] = useState<ScrapeResults | null>(null);
   const [lastUrl, setLastUrl] = useState<string>('');
 
-  const handleSubmit = async (url: string) => {
+  const handleSubmit = async (url: string, forcePlaywright: boolean = false) => {
     setLastUrl(url);
     setLoadingState('loading');
     setResults(null);
 
     try {
-      const data = await scrapeWebsite(url);
+      const data = await scrapeWebsite(url, forcePlaywright);
       setResults(data);
       setLoadingState('success');
     } catch (error) {
