@@ -31,3 +31,7 @@ htmlcov/
 !README.MD
 !readme.MD
 
+# Production result files
+backend/results.txt
+backend/results_2.txt
+backend/results_3.txt

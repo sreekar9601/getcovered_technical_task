@@ -13,6 +13,15 @@ from app.utils import clean_html_snippet
 
 logger = logging.getLogger(__name__)
 
+# Import LLM detector (will be None if not available)
+try:
+    from app.llm_detector import detect_with_llm, convert_llm_to_auth_components, LLM_ENABLED
+except ImportError:
+    detect_with_llm = None
+    convert_llm_to_auth_components = None
+    LLM_ENABLED = False
+    logger.warning("LLM detector not available")
+
 
 class AuthDetector:
     """Detects authentication components in HTML"""
@@ -36,7 +45,7 @@ class AuthDetector:
     
     def detect(self, html: str, url: str) -> AuthComponents:
         """
-        Main detection orchestrator
+        Main detection orchestrator with LLM fallback
         
         Args:
             html: HTML content to analyze
@@ -52,6 +61,24 @@ class AuthDetector:
             
             traditional = self._detect_traditional_form(soup)
             oauth = self._detect_oauth_buttons(soup, url)
+            
+            # If nothing found and LLM is available, try LLM detection
+            if not traditional.found and not oauth.found and LLM_ENABLED and detect_with_llm:
+                logger.info("Traditional detection found nothing, trying LLM fallback...")
+                llm_result = detect_with_llm(html, url)
+                
+                if llm_result and llm_result.get('has_login_form'):
+                    logger.info(f"LLM detected login components (confidence: {llm_result.get('confidence')})")
+                    
+                    # Convert LLM result to our format
+                    llm_components = convert_llm_to_auth_components(llm_result)
+                    
+                    return AuthComponents(
+                        traditional_form=TraditionalAuthComponent(**llm_components['traditional_form']),
+                        oauth_buttons=OAuthAuthComponent(**llm_components['oauth_buttons'])
+                    )
+                else:
+                    logger.info("LLM also found no login components")
             
             logger.info(
                 f"Detection complete - Traditional: {traditional.found}, "
@@ -76,15 +103,31 @@ class AuthDetector:
         
         Strategy:
         1. Find all password inputs (strongest signal)
-        2. For each password input, find parent form
-        3. Look for username/email inputs in same form
-        4. Extract HTML snippet
+        2. Also look for inputs with password-related attributes
+        3. For each password input, find parent form or container
+        4. Look for username/email inputs in same form
+        5. Extract HTML snippet
         """
         indicators = []
         found_snippets = []
         
-        # 1. Find password inputs (strongest signal)
-        password_inputs = soup.find_all('input', {'type': 'password'})
+        # 1. Find password inputs - multiple strategies
+        password_inputs = set()
+        
+        # Standard type="password"
+        password_inputs.update(soup.find_all('input', {'type': 'password'}))
+        
+        # Sometimes type is set via JavaScript - look for password-related names/ids
+        for input_tag in soup.find_all('input'):
+            attrs_text = ' '.join([
+                str(input_tag.get('name', '')),
+                str(input_tag.get('id', '')),
+                str(input_tag.get('placeholder', '')),
+                str(input_tag.get('autocomplete', '')),
+            ]).lower()
+            
+            if 'password' in attrs_text or 'passwd' in attrs_text or 'pwd' in attrs_text:
+                password_inputs.add(input_tag)
         
         if not password_inputs:
             logger.debug("No password inputs found")
@@ -102,36 +145,46 @@ class AuthDetector:
                 logger.debug("Found form containing password input")
                 
                 # 3. Look for email/username/text inputs in same form
-                text_inputs = form.find_all('input', {'type': ['email', 'text', 'tel']})
+                # Look for any input that might be username/email
+                text_inputs = form.find_all('input')
                 
                 # Filter for login-related inputs
                 login_inputs = [
                     inp for inp in text_inputs
-                    if self._is_login_input(inp)
+                    if inp != pwd_input and self._is_login_input(inp)
                 ]
                 
                 if login_inputs:
                     indicators.append('email_input')
                     logger.debug(f"Found {len(login_inputs)} login-related input(s)")
-                    
-                    # Find submit button
-                    submit_btn = form.find(['button', 'input'], {'type': 'submit'})
-                    if submit_btn:
-                        indicators.append('submit_button')
-                        logger.debug("Found submit button")
-                    
-                    # Extract clean HTML snippet
-                    html_snippet = clean_html_snippet(form)
-                    found_snippets.append(html_snippet)
-        
-        # 4. Handle password inputs outside forms (modern SPAs)
-        if not found_snippets:
-            logger.debug("No forms found, checking for formless login sections")
-            for pwd_input in password_inputs:
+                
+                # Find submit button - look more broadly
+                submit_btn = (
+                    form.find('button', {'type': 'submit'}) or
+                    form.find('input', {'type': 'submit'}) or
+                    form.find('button', string=lambda s: s and ('log' in s.lower() or 'sign' in s.lower())) or
+                    form.find('button')  # Any button in the form
+                )
+                if submit_btn:
+                    indicators.append('submit_button')
+                    logger.debug("Found submit button")
+                
+                # Extract clean HTML snippet
+                html_snippet = clean_html_snippet(form)
+                found_snippets.append(html_snippet)
+            else:
+                # No form - look for container (modern SPAs)
+                logger.debug("No form found, checking for formless login section")
                 container = self._find_login_container(pwd_input)
                 if container:
-                    html_snippet = clean_html_snippet(container)
-                    found_snippets.append(html_snippet)
+                    # Check if container has other inputs
+                    all_inputs = container.find_all('input')
+                    has_other_inputs = len(all_inputs) > 1
+                    
+                    if has_other_inputs:
+                        indicators.append('formless_login')
+                        html_snippet = clean_html_snippet(container)
+                        found_snippets.append(html_snippet)
         
         # Deduplicate and limit snippets
         unique_snippets = list(dict.fromkeys(found_snippets))[:3]  # Max 3 snippets
@@ -146,21 +199,38 @@ class AuthDetector:
         """
         Check if input is likely for login credentials
         
-        Examines: name, id, placeholder, aria-label, autocomplete
+        Examines: name, id, placeholder, aria-label, autocomplete, type
         """
+        # Skip password inputs (handled separately)
+        if input_tag.get('type') == 'password':
+            return False
+        
+        # Skip hidden inputs, submit buttons, etc.
+        input_type = input_tag.get('type', 'text').lower()
+        if input_type in ['hidden', 'submit', 'button', 'checkbox', 'radio']:
+            return False
+        
         # Get all relevant attributes
         attrs = [
-            input_tag.get('name', ''),
-            input_tag.get('id', ''),
-            input_tag.get('placeholder', ''),
-            input_tag.get('aria-label', ''),
-            input_tag.get('autocomplete', ''),
+            str(input_tag.get('name', '')),
+            str(input_tag.get('id', '')),
+            str(input_tag.get('placeholder', '')),
+            str(input_tag.get('aria-label', '')),
+            str(input_tag.get('autocomplete', '')),
+            str(input_tag.get('class', '')),
         ]
         
         combined = ' '.join(attrs).lower()
         
+        # Expanded keywords for better detection
+        extended_keywords = self.login_keywords + [
+            'mail', 'identifier', 'phone', 'mobile',
+            'user_id', 'userid', 'user-id',
+            'customer', 'member',
+        ]
+        
         # Check for login keywords
-        return any(keyword in combined for keyword in self.login_keywords)
+        return any(keyword in combined for keyword in extended_keywords)
     
     def _find_login_container(self, element: Tag) -> Optional[Tag]:
         """
@@ -207,8 +277,12 @@ class AuthDetector:
         found_snippets = []
         indicators = []
         
-        # 1. Find clickable elements
-        clickable_elements = soup.find_all(['button', 'a', 'div'], class_=True)
+        # 1. Find clickable elements - broader search
+        clickable_elements = (
+            soup.find_all(['button', 'a']) +
+            soup.find_all('div', class_=True) +
+            soup.find_all('span', class_=True)  # Some sites use spans
+        )
         
         logger.debug(f"Checking {len(clickable_elements)} clickable elements for OAuth")
         

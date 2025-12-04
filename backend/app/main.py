@@ -8,6 +8,10 @@ import time
 import asyncio
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from app.models import (
     ScrapeRequest,
@@ -105,11 +109,11 @@ async def scrape_endpoint(request: ScrapeRequest):
     try:
         start_time = time.time()
         
-        # 3. Scrape with timeout
+        # 3. Scrape with timeout (increased to allow Playwright + fallback)
         logger.info(f"Starting scrape for: {url}")
         result = await asyncio.wait_for(
-            asyncio.to_thread(scrape_website, url),
-            timeout=45.0  # Overall timeout
+            scrape_website(url),
+            timeout=60.0  # 60 second timeout to allow Playwright (30s) + fallback
         )
         
         scrape_time = int((time.time() - start_time) * 1000)
@@ -166,31 +170,6 @@ async def scrape_endpoint(request: ScrapeRequest):
                 url=url,
                 error="connection_error",
                 message="Could not connect to the website. Please check the URL.",
-                auth_found=False
-            ).model_dump()
-        )
-    
-    except requests.exceptions.HTTPError as e:
-        status_code = e.response.status_code if e.response else 500
-        logger.error(f"HTTP error scraping {url}: {status_code}")
-        
-        if status_code == 403:
-            error_msg = "Access denied. The website may be blocking automated requests."
-            error_type = "blocked"
-        elif status_code == 429:
-            error_msg = "Rate limited. The website is blocking too many requests."
-            error_type = "rate_limited"
-        else:
-            error_msg = f"HTTP error {status_code}"
-            error_type = "http_error"
-        
-        return JSONResponse(
-            status_code=status_code,
-            content=ErrorResponse(
-                success=False,
-                url=url,
-                error=error_type,
-                message=error_msg,
                 auth_found=False
             ).model_dump()
         )

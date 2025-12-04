@@ -8,4 +8,5 @@ html5lib==1.1
 playwright==1.40.0
 validators==0.22.0
 python-dotenv==1.0.0
+google-generativeai==0.3.0
 
