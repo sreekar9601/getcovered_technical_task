@@ -47,7 +47,9 @@ app.add_middleware(
         "http://localhost:5173",  # Vite default
         "http://localhost:3000",  # React default
         "http://localhost:8080",
-        "*"  # Allow all for development (restrict in production)
+        "https://getcovered-technical-task.vercel.app",  # Production frontend
+        "https://getcovered-technical-task-jmyrp24wh-sreekars-projects-d8e0a08e.vercel.app",  # Vercel preview
+        "https://*.vercel.app",  # All Vercel preview deployments
     ],
     allow_credentials=True,
     allow_methods=["*"],
