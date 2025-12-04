@@ -104,9 +104,10 @@ class AuthDetector:
         Strategy:
         1. Find all password inputs (strongest signal)
         2. Also look for inputs with password-related attributes
-        3. For each password input, find parent form or container
-        4. Look for username/email inputs in same form
-        5. Extract HTML snippet
+        3. Search in surrounding text/labels for login indicators
+        4. For each password input, find parent form or container
+        5. Look for username/email inputs in same form
+        6. Extract HTML snippet
         """
         indicators = []
         found_snippets = []
@@ -126,7 +127,17 @@ class AuthDetector:
                 str(input_tag.get('autocomplete', '')),
             ]).lower()
             
-            if 'password' in attrs_text or 'passwd' in attrs_text or 'pwd' in attrs_text:
+            # Also check associated label text
+            input_id = input_tag.get('id')
+            label_text = ''
+            if input_id:
+                label = soup.find('label', {'for': input_id})
+                if label:
+                    label_text = label.get_text(strip=True).lower()
+            
+            combined_text = attrs_text + ' ' + label_text
+            
+            if 'password' in combined_text or 'passwd' in combined_text or 'pwd' in combined_text:
                 password_inputs.add(input_tag)
         
         if not password_inputs:
@@ -199,7 +210,7 @@ class AuthDetector:
         """
         Check if input is likely for login credentials
         
-        Examines: name, id, placeholder, aria-label, autocomplete, type
+        Examines: name, id, placeholder, aria-label, autocomplete, type, label text
         """
         # Skip password inputs (handled separately)
         if input_tag.get('type') == 'password':
@@ -220,13 +231,31 @@ class AuthDetector:
             str(input_tag.get('class', '')),
         ]
         
-        combined = ' '.join(attrs).lower()
+        # Also check associated label text (for sites like Instagram)
+        label_text = ''
+        input_id = input_tag.get('id')
+        if input_id:
+            # Find label with matching 'for' attribute
+            parent_form = input_tag.find_parent(['form', 'div'])
+            if parent_form:
+                label = parent_form.find('label', {'for': input_id})
+                if label:
+                    label_text = label.get_text(strip=True)
+        
+        # If no explicit label, check for nearby label or preceding sibling
+        if not label_text:
+            # Check previous sibling
+            prev_sibling = input_tag.find_previous_sibling(['label', 'span', 'div'])
+            if prev_sibling and len(prev_sibling.get_text(strip=True)) < 50:
+                label_text = prev_sibling.get_text(strip=True)
+        
+        combined = ' '.join(attrs + [label_text]).lower()
         
         # Expanded keywords for better detection
         extended_keywords = self.login_keywords + [
             'mail', 'identifier', 'phone', 'mobile',
             'user_id', 'userid', 'user-id',
-            'customer', 'member',
+            'customer', 'member', 'telephone', 'tel',
         ]
         
         # Check for login keywords
@@ -265,28 +294,40 @@ class AuthDetector:
     
     def _detect_oauth_buttons(self, soup: BeautifulSoup, url: str) -> OAuthAuthComponent:
         """
-        Detect OAuth/SSO buttons
+        Detect OAuth/SSO buttons (improved to avoid duplicates)
         
         Strategy:
-        1. Find buttons, links, and clickable divs
+        1. Find buttons and links (prioritize these)
         2. Check for OAuth keywords ("Sign in with...")
         3. Identify provider (Google, Microsoft, etc.)
         4. Check for OAuth URLs in hrefs
+        5. Deduplicate nested elements
         """
-        found_providers = []
-        found_snippets = []
+        found_providers_map = {}  # provider -> element (avoid nested duplicates)
         indicators = []
         
-        # 1. Find clickable elements - broader search
-        clickable_elements = (
-            soup.find_all(['button', 'a']) +
-            soup.find_all('div', class_=True) +
-            soup.find_all('span', class_=True)  # Some sites use spans
-        )
+        # 1. Find clickable elements - prioritize buttons and links
+        # First pass: buttons and links only (most reliable)
+        primary_elements = soup.find_all(['button', 'a'])
         
-        logger.debug(f"Checking {len(clickable_elements)} clickable elements for OAuth")
+        # Second pass: clickable divs (only if they have role or onclick)
+        secondary_elements = []
+        for div in soup.find_all('div', class_=True):
+            if div.get('role') in ['button', 'link'] or div.get('onclick'):
+                secondary_elements.append(div)
         
-        for element in clickable_elements:
+        all_elements = primary_elements + secondary_elements
+        
+        logger.debug(f"Checking {len(all_elements)} clickable elements for OAuth")
+        
+        # Track seen elements to avoid nested duplicates
+        processed_elements = set()
+        
+        for element in all_elements:
+            # Skip if this element is a child of already processed element
+            if any(element in processed.descendants for processed in processed_elements):
+                continue
+            
             # Get all relevant attributes
             text = element.get_text(strip=True).lower()
             classes = element.get('class', [])
@@ -311,14 +352,12 @@ class AuthDetector:
                 # 3. Identify provider
                 for provider, keywords in self.oauth_providers.items():
                     if any(keyword in combined for keyword in keywords):
-                        found_providers.append(provider)
-                        indicators.append(f"{provider}_oauth")
-                        
-                        # Extract snippet
-                        snippet = clean_html_snippet(element, max_length=300)
-                        found_snippets.append(snippet)
-                        
-                        logger.debug(f"Found {provider} OAuth button")
+                        # Only add if we haven't found this provider yet
+                        if provider not in found_providers_map:
+                            found_providers_map[provider] = element
+                            indicators.append(f"{provider}_oauth")
+                            processed_elements.add(element)
+                            logger.debug(f"Found {provider} OAuth button")
                         break
             
             # 4. Check for OAuth URLs in hrefs
@@ -333,22 +372,22 @@ class AuthDetector:
                 
                 for oauth_url, provider in oauth_urls.items():
                     if oauth_url in href:
-                        found_providers.append(provider)
-                        indicators.append(f"{provider}_sso_url")
-                        snippet = clean_html_snippet(element, max_length=300)
-                        found_snippets.append(snippet)
-                        
-                        logger.debug(f"Found {provider} OAuth URL")
+                        # Only add if we haven't found this provider yet
+                        if provider not in found_providers_map:
+                            found_providers_map[provider] = element
+                            indicators.append(f"{provider}_sso_url")
+                            processed_elements.add(element)
+                            logger.debug(f"Found {provider} OAuth URL")
                         break
         
-        # 5. Deduplicate providers and limit snippets
-        unique_providers = list(dict.fromkeys(found_providers))  # Preserve order
-        unique_snippets = list(dict.fromkeys(found_snippets))[:5]  # Max 5 snippets
+        # 5. Extract snippets (one per provider)
+        providers = list(found_providers_map.keys())
+        snippets = [clean_html_snippet(elem, max_length=300) for elem in found_providers_map.values()]
         
         return OAuthAuthComponent(
-            found=bool(unique_providers),
-            providers=unique_providers,
-            html_snippets=unique_snippets,
+            found=bool(providers),
+            providers=providers,
+            html_snippets=snippets,
             indicators=list(set(indicators))
         )
 
