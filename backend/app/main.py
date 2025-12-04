@@ -22,6 +22,7 @@ from app.models import (
 from app.scraper import scrape_website, ScrapingError
 from app.detector import detect_auth
 from app.utils import extract_title, normalize_url
+from app.config import get_cors_origins
 import requests
 
 # Configure logging
@@ -40,17 +41,13 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS
+# Configure CORS based on environment
+cors_origins = get_cors_origins()
+logger.info(f"CORS origins configured for {os.getenv('ENVIRONMENT', 'development')}: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default
-        "http://localhost:3000",  # React default
-        "http://localhost:8080",
-        "https://getcovered-technical-task.vercel.app",  # Production frontend
-        "https://getcovered-technical-task-jmyrp24wh-sreekars-projects-d8e0a08e.vercel.app",  # Vercel preview
-        "https://*.vercel.app",  # All Vercel preview deployments
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

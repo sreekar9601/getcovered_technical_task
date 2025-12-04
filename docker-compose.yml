@@ -10,6 +10,7 @@ services:
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ENVIRONMENT=docker  # Set to 'production' in production
     volumes:
       - ./backend:/app
     restart: unless-stopped
@@ -23,12 +24,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8000
     container_name: login-detector-frontend
     ports:
       - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
-    environment:
-      - VITE_API_URL=http://localhost:8000
 

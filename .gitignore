@@ -35,3 +35,11 @@ htmlcov/
 backend/results.txt
 backend/results_2.txt
 backend/results_3.txt
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# Docker overrides (local customization)
+docker-compose.override.yml

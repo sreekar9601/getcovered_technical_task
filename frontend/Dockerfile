@@ -13,6 +13,9 @@ RUN npm ci
 COPY . .
 
 # Build the application
+# VITE_API_URL can be passed as build arg, defaults to localhost:8000 for Docker
+ARG VITE_API_URL=http://localhost:8000
+ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # Production stage

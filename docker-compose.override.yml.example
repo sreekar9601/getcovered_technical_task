@@ -1,0 +1,17 @@
+# Example override file for local Docker development
+# Copy this to docker-compose.override.yml (gitignored) to customize locally
+# docker-compose.override.yml is automatically loaded by docker-compose
+
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      - ENVIRONMENT=docker
+      - CORS_ORIGINS=http://localhost,http://localhost:5173
+  
+  frontend:
+    build:
+      args:
+        - VITE_API_URL=http://localhost:8000
+
