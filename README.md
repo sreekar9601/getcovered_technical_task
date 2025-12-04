@@ -1,6 +1,6 @@
 # Login Form Detector - GetCovered Task Submission
 
-🔐 **AI-powered web application that detects authentication components on any website**
+🔐 **Web application that detects authentication components on any website**
 
 Identifies traditional username/password forms and OAuth/SSO buttons with intelligent dual-path scraping.
 
