@@ -1,6 +1,7 @@
 """Configuration management for different environments"""
 import os
-from typing import List
+import re
+from typing import List, Optional
 
 # Detect environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
@@ -20,7 +21,6 @@ def get_cors_origins() -> List[str]:
     if ENVIRONMENT == "production":
         origins.extend([
             "https://getcovered-technical-task.vercel.app",
-            "https://*.vercel.app",  # All Vercel preview deployments
         ])
     
     # Docker/local origins (development or docker)
@@ -35,4 +35,14 @@ def get_cors_origins() -> List[str]:
         origins.extend([origin.strip() for origin in custom_origins.split(",")])
     
     return origins
+
+
+def get_cors_origin_regex() -> Optional[str]:
+    """Get regex pattern for CORS origins (for wildcard support)"""
+    
+    # In production, allow all Vercel preview deployments
+    if ENVIRONMENT == "production":
+        return r"https://.*\.vercel\.app"
+    
+    return None
 
