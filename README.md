@@ -8,9 +8,14 @@ Identifies traditional username/password forms and OAuth/SSO buttons with intell
 
 ## 🚀 Live Demo
 
-- **Frontend**: http://localhost:5173 (development)
+- **Frontend**: https://getcovered-technical-task.vercel.app
+- **Backend API**: https://getcoveredtechnicaltask-production.up.railway.app
+- **API Documentation**: https://getcoveredtechnicaltask-production.up.railway.app/docs
+- **Health Check**: https://getcoveredtechnicaltask-production.up.railway.app/api/health
+
+### Local Development
+- **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
 
 ---
 
