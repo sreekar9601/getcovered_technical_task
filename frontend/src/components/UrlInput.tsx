@@ -73,13 +73,28 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit, isLoading }) => {
       
       <div className="mt-6">
         <p className="text-sm text-gray-600 mb-3 font-medium">Try these popular sites:</p>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
           {[
             { url: 'https://github.com/login', name: 'GitHub', color: 'bg-gray-800 hover:bg-gray-900' },
             { url: 'https://stackoverflow.com/users/login', name: 'Stack Overflow', color: 'bg-orange-500 hover:bg-orange-600' },
             { url: 'https://www.linkedin.com/login', name: 'LinkedIn', color: 'bg-blue-700 hover:bg-blue-800' },
-            { url: 'https://twitter.com/i/flow/login', name: 'Twitter/X', color: 'bg-black hover:bg-gray-900' },
-            { url: 'https://www.reddit.com/login/', name: 'Reddit', color: 'bg-orange-600 hover:bg-orange-700' },
+          ].map((example) => (
+            <button
+              key={example.url}
+              type="button"
+              onClick={() => setUrl(example.url)}
+              disabled={isLoading}
+              className={`${example.color} text-white px-4 py-3 rounded-lg text-sm font-medium transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-md`}
+            >
+              {example.name}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[
+            { url: 'https://myaccount.nytimes.com/', name: 'NYTimes', color: 'bg-slate-800 hover:bg-slate-900' },
+            { url: 'https://www.twitch.tv/login', name: 'Twitch', color: 'bg-purple-700 hover:bg-purple-800' },
+            { url: 'https://accounts.x.ai/sign-in', name: 'Grok (x.ai)', color: 'bg-zinc-900 hover:bg-black' },
           ].map((example) => (
             <button
               key={example.url}

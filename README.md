@@ -1,4 +1,4 @@
-# Login Form Detector
+# Login Form Detector - GetCovered Task Submission
 
 🔐 **AI-powered web application that detects authentication components on any website**
 
@@ -206,19 +206,21 @@ curl http://localhost:8000/api/health
 
 ## 🧪 Testing
 
-### Tested Websites (80%+ Success Rate)
+### Example Sites
 
-✅ **Working Sites:**
-- Stack Overflow (`https://stackoverflow.com/users/login`)
-- GitHub (`https://github.com/login`)
-- HackerNews (`https://news.ycombinator.com/login`)
-- Wikipedia (`https://en.wikipedia.org/w/index.php?title=Special:UserLogin`)
-- LinkedIn (`https://www.linkedin.com/login`)
+These are good examples to try in the UI:
 
-⚠️ **Known Limitations:**
-- Some sites (e.g., Reddit) block automated requests with anti-bot measures
-- Very slow sites may timeout (45-second limit)
-- Sites with complex CAPTCHA systems
+- GitHub: `https://github.com/login`
+- Stack Overflow: `https://stackoverflow.com/users/login`
+- LinkedIn: `https://www.linkedin.com/login`
+- New York Times: `https://myaccount.nytimes.com/`
+- Twitch: `https://www.twitch.tv/login`
+- Grok (x.ai): `https://accounts.x.ai/sign-in`
+
+⚠️ **Notes:**
+- Some sites (e.g., Instagram, NYTimes, Twitch, Grok) use strong bot protection
+- When detection fails, you can retry with **“Force Browser Automation”** (Playwright) in the UI
+- Very slow or CAPTCHA-heavy sites may still fail or timeout
 
 ### Manual Testing
 
@@ -377,73 +379,3 @@ login-detector/
 
 ---
 
-## 🤝 Contributing
-
-This is a technical assessment project, but feedback and suggestions are welcome!
-
----
-
----
-
-## 🐳 Docker & Deployment
-
-### Quick Deploy with Docker
-
-1. **Set up environment**:
-```bash
-# Copy and edit environment file
-cp backend/.env.example backend/.env
-# Add your GEMINI_API_KEY to backend/.env
-```
-
-2. **Build and run**:
-```bash
-docker-compose up --build
-```
-
-3. **Access**:
-- Frontend: http://localhost
-- Backend: http://localhost:8000
-
-### Cloud Deployment
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment guides:
-- 🚂 **Railway** - Easiest full-stack deployment (recommended)
-- 🎨 **Render** - Free tier with auto-deploy from GitHub
-- ▲ **Vercel + Railway** - Best for frontend performance
-- ☁️ **Google Cloud Run** - Production-grade scalability
-
-**Quick Railway Deploy:**
-```bash
-npm i -g @railway/cli
-railway login
-cd backend && railway init && railway up
-cd ../frontend && railway init && railway up
-```
-
----
-
-## 📄 License
-
-MIT
-
----
-
-## 🙏 Acknowledgments
-
-- **FastAPI** - Modern Python web framework
-- **Playwright** - Browser automation
-- **BeautifulSoup** - HTML parsing
-- **React** - UI framework
-- **Tailwind CSS** - Styling
-- **Vite** - Build tool
-
----
-
-## 📧 Contact
-
-For questions about this project, please reach out through the assessment process.
-
----
-
-**Built with ❤️ for the AI Engineer Technical Assessment**

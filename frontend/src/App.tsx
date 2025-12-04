@@ -76,7 +76,7 @@ function App() {
 
         {/* Footer */}
         <div className="mt-16 text-center text-sm text-gray-500">
-          <p>Built with FastAPI + Playwright + React</p>
+          <p>Built with React + FastAPI + requests/BeautifulSoup + Playwright</p>
           <p className="mt-2">Supports both static HTML and JavaScript-rendered sites</p>
         </div>
       </div>

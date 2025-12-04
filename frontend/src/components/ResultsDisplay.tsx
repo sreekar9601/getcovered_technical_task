@@ -27,6 +27,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
             <p className="mt-1 text-yellow-700">
               {results.message || 'No login forms or authentication components were detected on this page.'}
             </p>
+            <p className="mt-2 text-sm text-yellow-700">
+              Try retrying with <span className="font-semibold">Force Browser Automation</span> enabled in the checkbox above for JavaScript-heavy or protected sites.
+            </p>
           </div>
         </div>
       </div>
