@@ -52,19 +52,27 @@ export const UrlInput: React.FC<UrlInputProps> = ({ onSubmit, isLoading }) => {
         </button>
       </div>
       
-      <div className="mt-3 flex gap-2 flex-wrap">
-        <span className="text-sm text-gray-500">Try:</span>
-        {['https://github.com/login', 'https://stackoverflow.com/users/login', 'https://www.linkedin.com/login'].map((exampleUrl) => (
-          <button
-            key={exampleUrl}
-            type="button"
-            onClick={() => setUrl(exampleUrl)}
-            disabled={isLoading}
-            className="text-sm text-blue-600 hover:text-blue-800 hover:underline disabled:text-gray-400"
-          >
-            {exampleUrl.split('//')[1].split('/')[0]}
-          </button>
-        ))}
+      <div className="mt-6">
+        <p className="text-sm text-gray-600 mb-3 font-medium">Try these popular sites:</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { url: 'https://github.com/login', name: 'GitHub', color: 'bg-gray-800 hover:bg-gray-900' },
+            { url: 'https://stackoverflow.com/users/login', name: 'Stack Overflow', color: 'bg-orange-500 hover:bg-orange-600' },
+            { url: 'https://www.linkedin.com/login', name: 'LinkedIn', color: 'bg-blue-700 hover:bg-blue-800' },
+            { url: 'https://twitter.com/i/flow/login', name: 'Twitter/X', color: 'bg-black hover:bg-gray-900' },
+            { url: 'https://www.reddit.com/login/', name: 'Reddit', color: 'bg-orange-600 hover:bg-orange-700' },
+          ].map((example) => (
+            <button
+              key={example.url}
+              type="button"
+              onClick={() => setUrl(example.url)}
+              disabled={isLoading}
+              className={`${example.color} text-white px-4 py-3 rounded-lg text-sm font-medium transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-md`}
+            >
+              {example.name}
+            </button>
+          ))}
+        </div>
       </div>
     </form>
   );
